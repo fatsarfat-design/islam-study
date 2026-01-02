@@ -1,0 +1,212 @@
+
+:root{
+  --bg:#0c0f14;
+  --panel:#111826;
+  --card:#0f1724;
+  --text:#e8eefc;
+  --muted:#9bb0d0;
+  --accent:#e8c878;
+  --accent2:#7dd3fc;
+  --border: rgba(255,255,255,.08);
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
+  --radius: 18px;
+  --fs: 16px;
+  --arfs: 22px;
+  --font: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Noto Naskh Arabic", sans-serif;
+  --arfont: "Noto Naskh Arabic", "Amiri", "Scheherazade New", serif;
+  --bg-img: none;
+  --bg-repeat: repeat;
+  --bg-size: auto;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: var(--font);
+  font-size: var(--fs);
+  color: var(--text);
+  background: radial-gradient(900px 500px at 20% 10%, rgba(125,211,252,.14), transparent 55%),
+              radial-gradient(900px 600px at 85% 15%, rgba(232,200,120,.10), transparent 55%),
+              radial-gradient(900px 700px at 50% 100%, rgba(232,200,120,.08), transparent 60%),
+              var(--bg);
+}
+body::after{
+  content:"";
+  position: fixed;
+  inset: 0;
+  pointer-events:none;
+  background-image: var(--bg-img);
+  background-repeat: var(--bg-repeat);
+  background-size: var(--bg-size);
+  background-position: var(--bg-pos, center);
+  opacity: .22;
+  filter: saturate(1.05) contrast(1.02);
+  z-index: 0;
+}
+a{color:inherit}
+.app{position:relative; z-index:1; display:grid; grid-template-columns: 330px 1fr; height:100vh}
+.sidebar{
+  border-right:1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,.04), transparent);
+  padding:18px;
+  overflow:auto;
+}
+.main{
+  padding:18px;
+  overflow:auto;
+}
+.brand{
+  display:flex; align-items:center; gap:10px; margin-bottom:14px;
+}
+.logo{
+  width:38px; height:38px; border-radius:14px;
+  background: radial-gradient(circle at 30% 30%, rgba(232,200,120,.9), rgba(125,211,252,.25) 45%, rgba(255,255,255,.06) 70%);
+  box-shadow: var(--shadow);
+  border:1px solid rgba(255,255,255,.12);
+}
+.brand h1{font-size:16px; margin:0}
+.brand .sub{color:var(--muted); font-size:12px; margin-top:2px}
+.searchRow{display:flex; gap:10px; align-items:center}
+.searchRow input{
+  width:100%; padding:10px 12px; border-radius:14px;
+  background: rgba(255,255,255,.04);
+  border:1px solid var(--border);
+  color:var(--text);
+  outline:none;
+}
+.pills{display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 16px}
+.pill{
+  padding:7px 10px; border-radius:999px;
+  background: rgba(255,255,255,.04);
+  border:1px solid var(--border);
+  color: var(--muted);
+  cursor:pointer;
+  user-select:none;
+  font-size:12px;
+}
+.pill.active{color:var(--text); border-color: rgba(232,200,120,.35); background: rgba(232,200,120,.08)}
+.block{
+  margin:12px 0;
+}
+.blockTitle{
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:13px; color:var(--muted); margin:8px 2px;
+}
+.lessonList{display:flex; flex-direction:column; gap:8px}
+.lessonBtn{
+  display:flex; gap:10px; align-items:flex-start;
+  padding:10px 12px;
+  border-radius:16px;
+  background: rgba(255,255,255,.03);
+  border:1px solid var(--border);
+  cursor:pointer;
+  transition: .15s transform, .15s background;
+}
+.lessonBtn:hover{transform: translateY(-1px); background: rgba(255,255,255,.05)}
+.lessonBtn.active{border-color: rgba(125,211,252,.35); background: rgba(125,211,252,.08)}
+.lessonBtn .idx{
+  width:26px; height:26px; border-radius:10px;
+  display:grid; place-items:center;
+  border:1px solid rgba(255,255,255,.12);
+  color: var(--muted);
+  font-size:12px;
+  flex:0 0 auto;
+}
+.lessonBtn .meta{flex:1}
+.lessonBtn .title{font-size:13px; margin:0; line-height:1.25}
+.lessonBtn .hint{font-size:12px; margin-top:3px; color:var(--muted)}
+.topbar{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:12px; margin-bottom:12px;
+}
+.card{
+  background: rgba(255,255,255,.03);
+  border:1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.hero{padding:16px 16px 14px}
+.hero h2{margin:0 0 4px; font-size:18px}
+.hero p{margin:0; color:var(--muted); line-height:1.4}
+.actions{display:flex; gap:10px; flex-wrap:wrap}
+.btn{
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  cursor:pointer;
+  font-size:13px;
+}
+.btn.primary{border-color: rgba(232,200,120,.35); background: rgba(232,200,120,.10)}
+.btn.danger{border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.10)}
+.grid2{display:grid; grid-template-columns: 1.4fr .9fr; gap:14px; margin-top:14px}
+@media (max-width: 980px){
+  .app{grid-template-columns: 1fr}
+  .sidebar{height:auto; max-height: 48vh}
+  .grid2{grid-template-columns: 1fr}
+}
+.content{padding:16px}
+.content h3{margin:0 0 10px; font-size:18px}
+.content .ar{
+  font-family: var(--arfont);
+  font-size: var(--arfs);
+  line-height: 1.9;
+  direction: rtl;
+  text-align:right;
+  margin: 10px 0;
+}
+.content .ru{line-height:1.55; color: var(--text)}
+.content .muted{color:var(--muted)}
+.kv{display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin:10px 0}
+.kv .box{padding:10px 12px; border-radius:16px; border:1px solid var(--border); background: rgba(255,255,255,.03)}
+.table{
+  width:100%; border-collapse:separate; border-spacing:0; overflow:hidden;
+  border:1px solid var(--border); border-radius: 16px;
+}
+.table th,.table td{padding:10px 10px; border-bottom:1px solid var(--border); vertical-align:top}
+.table th{font-size:12px; text-transform:uppercase; letter-spacing:.08em; color: var(--muted); background: rgba(255,255,255,.03)}
+.table tr:last-child td{border-bottom:none}
+.hr{height:1px; background: var(--border); margin:14px 0}
+.noteBox{padding:14px}
+.noteBox textarea{
+  width:100%; min-height: 130px; resize:vertical;
+  padding:10px 12px; border-radius:14px;
+  background: rgba(255,255,255,.04);
+  border:1px solid var(--border);
+  color: var(--text);
+  outline:none;
+}
+.noteRow{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-top:10px; flex-wrap:wrap}
+.badge{font-size:12px; color: var(--muted)}
+.quiz{padding:14px}
+.q{padding:12px; border-radius:16px; border:1px solid var(--border); background: rgba(255,255,255,.03); margin:10px 0}
+.q h4{margin:0 0 8px; font-size:14px}
+.opt{display:flex; gap:10px; align-items:flex-start; padding:8px 10px; border-radius:14px; cursor:pointer; border:1px solid transparent}
+.opt:hover{background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.06)}
+.opt input{margin-top:3px}
+.result{margin-top:10px; color: var(--muted)}
+.small{font-size:12px; color: var(--muted)}
+.settings{padding:14px}
+.settings .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:10px 0}
+.settings label{font-size:12px; color: var(--muted)}
+.settings select,.settings input[type="range"],.settings input[type="text"]{
+  padding:8px 10px; border-radius:12px;
+  background: rgba(255,255,255,.04);
+  border:1px solid var(--border);
+  color: var(--text);
+}
+
+/* --- v23 additions: prayer & adhkar --- */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media (max-width: 980px){.grid2{grid-template-columns:1fr;}}
+.card.inner{padding:14px;}
+.clock{font-size:34px;font-weight:800;letter-spacing:1px;}
+.timesList .timeRow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.timesList .timeRow:last-child{border-bottom:none;}
+.counter{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.counter #cVal{min-width:44px;text-align:center;font-weight:800;font-size:18px;}
+.adhkarView .adhItem{padding:12px;border:1px solid var(--border);border-radius:14px;margin-bottom:12px;background:rgba(0,0,0,.12);}
+.adhkarView .adhItem .ar.big{font-size: calc(var(--arSize) + 2px);line-height:1.8;}
+/* make topbar wrap nicely when more buttons */
+.topbar{flex-wrap:wrap;gap:10px;}
