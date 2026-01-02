@@ -1,9 +1,9 @@
 {
-  "name": "Таджвид • Учебное приложение",
-  "short_name": "Таджвид",
-  "start_url": "./?v=23",
+  "name": "Tajweed Study",
+  "short_name": "Tajweed",
+  "start_url": "./?v=24",
   "display": "standalone",
-  "background_color": "#0c0f14",
-  "theme_color": "#0c0f14",
+  "background_color": "#0f1412",
+  "theme_color": "#0f1412",
   "icons": []
 }
