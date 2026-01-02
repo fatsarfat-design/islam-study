@@ -1,62 +1,19 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Tajweed • Учебник + Намаз + Азкары</title>
-  <meta name="theme-color" content="#0f1412"/>
-  <link rel="manifest" href="./manifest.json?v=24">
-  <link rel="stylesheet" href="./styles.css?v=24">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Таджвид • Учебное приложение</title>
+  <meta name="description" content="Учебное приложение по таджвиду: блоки, заметки, тесты, экзамены." />
+  <link rel="stylesheet" href="./styles.css?v=23" />
+  <link rel="manifest" href="./manifest.json?v=23" />
+  <meta name="theme-color" content="#0c0f14" />
 </head>
 <body>
-  <div id="bgPhoto"></div>
-  <div id="bgOverlay"></div>
+  <noscript>Нужно включить JavaScript, чтобы приложение работало.</noscript>
 
-  <div id="app">
-    <header>
-      <div class="topbar">
-        <div class="brand"><span class="dot"></span><span>Учебное приложение</span><span class="badge" id="appVersion">v24</span></div>
-        <nav class="nav">
-          <button data-tab="tajweed" class="active">Таджвид</button>
-          <button data-tab="quran">Коран 30</button>
-          <button data-tab="prayer">Намаз</button>
-          <button data-tab="azkar">Азкары</button>
-          <button data-tab="notes">Заметки</button>
-          <button data-tab="progress">Прогресс</button>
-        </nav>
-      </div>
-    </header>
-
-    <main>
-      <section class="panel" id="leftPanel">
-        <div class="panelHeader"><h2>Меню</h2><button class="iconBtn" id="closeLeft">Закрыть</button></div>
-        <div class="content"></div>
-      </section>
-
-      <section class="panel" id="rightPanel">
-        <div class="panelHeader">
-          <h2>Контент</h2>
-          <div style="display:flex;gap:8px">
-            <button class="iconBtn" id="openLeftHeader">Открыть левую</button>
-            <button class="iconBtn" id="closeRight">Закрыть</button>
-          </div>
-        </div>
-        <div class="content"></div>
-      </section>
-    </main>
-
-    <div class="footer"><span class="muted">Офлайн: теория и заметки. Онлайн: Коран и Намаз.</span></div>
-  </div>
-
-  <div id="modal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:999">
-    <div class="panel" style="width:min(980px,92vw);max-height:86vh;overflow:auto">
-      <div class="panelHeader"><h2>Настройки</h2><button class="iconBtn" id="modalClose">Закрыть</button></div>
-      <div class="content" id="modalBody"></div>
-    </div>
-  </div>
-
-  <div id="toast" style="position:fixed;left:50%;bottom:18px;transform:translate(-50%,6px);opacity:0;transition:all .18s ease;background:rgba(0,0,0,.7);color:#fff;padding:10px 14px;border-radius:999px;z-index:1000;font-weight:800"></div>
-
-  <script type="module" src="./app.js?v=24"></script>
+  <script src="./data.js?v=23"></script>
+  <script src="./tests.js?v=23"></script>
+  <script src="./app.js?v=23"></script>
 </body>
 </html>
