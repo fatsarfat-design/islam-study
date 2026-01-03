@@ -212,9 +212,44 @@ a{color:inherit}
 .topbar{flex-wrap:wrap;gap:10px;}
 
 
-/* Quran word click */
-.qword{ cursor:pointer; padding:2px 3px; border-radius:8px; }
-.qword:hover{ background: rgba(255,255,255,.08); }
-.ayahNo{ font-size:.9em; opacity:.85; margin-inline-start:8px; }
-.ru{ line-height:1.45; }
-.err{ padding:10px 12px; border-radius:14px; background: rgba(255,80,80,.12); border:1px solid rgba(255,80,80,.25); }
+/* --- Quran module --- */
+.qSurahNav { display:flex; gap:8px; flex-wrap:wrap; }
+.qList { max-height: 70vh; overflow:auto; padding-right:6px; }
+.surahBlock { padding:12px; border:1px solid rgba(255,255,255,0.08); border-radius:16px; margin-bottom:14px; background: rgba(0,0,0,0.12); }
+.surahTitle { font-weight:700; margin-bottom:10px; }
+.ayahRow { display:grid; grid-template-columns: 44px 44px 1fr; gap:10px; padding:10px 0; border-top:1px solid rgba(255,255,255,0.08); }
+.ayahRow:first-of-type { border-top:none; }
+.ayahNum { opacity:.75; font-weight:700; text-align:center; }
+.ayahActions { display:flex; justify-content:center; align-items:flex-start; }
+.btn.mini { padding:6px 10px; border-radius:12px; font-size:12px; }
+.btn.mini.on { opacity:1; }
+.ayahAr { line-height: 2.1; }
+.qWord { cursor:pointer; padding:2px 4px; border-radius:10px; display:inline-block; }
+.qWord:hover { background: rgba(255,255,255,0.08); }
+.qWord.hasMadd { outline: 1px dashed rgba(255,255,255,0.25); }
+.hintCard { padding:10px; border:1px solid rgba(255,255,255,0.10); border-radius:14px; margin-bottom:10px; background: rgba(0,0,0,0.10); }
+.hintTitle { font-weight:700; margin-bottom:6px; }
+
+/* --- Notes --- */
+.noteCard { padding:12px; border:1px solid rgba(255,255,255,0.10); border-radius:16px; margin-bottom:12px; background: rgba(0,0,0,0.10); }
+.noteTitle { font-weight:700; }
+.noteText { white-space:pre-wrap; margin-top:8px; }
+.pillSmall { display:inline-block; padding:4px 10px; border-radius:999px; background: rgba(255,255,255,0.08); font-size:12px; margin-top:6px; }
+
+/* --- Progress / Review --- */
+.grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+@media (max-width: 900px){ .grid2 { grid-template-columns: 1fr; } .ayahRow { grid-template-columns: 44px 44px 1fr; } }
+.miniStat { padding:12px; border:1px solid rgba(255,255,255,0.10); border-radius:16px; background: rgba(0,0,0,0.10); }
+.bigNum { font-size:28px; font-weight:800; margin-top:6px; }
+.reviewCard { padding:12px; border:1px solid rgba(255,255,255,0.10); border-radius:16px; margin-bottom:12px; background: rgba(0,0,0,0.10); }
+.reviewTitle { font-size:18px; font-weight:800; margin-top:4px; }
+
+/* Modal tweaks */
+.modal.open { display:flex; }
+.modal { display:none; position:fixed; inset:0; background: rgba(0,0,0,0.55); z-index:1000; align-items:center; justify-content:center; padding:16px; }
+.modalInner { width:min(860px, 100%); max-height: 88vh; overflow:auto; background: rgba(20,20,24,0.96); border:1px solid rgba(255,255,255,0.12); border-radius:18px; padding:16px; }
+.textarea { width:100%; border-radius:14px; padding:10px 12px; border:1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.18); color: inherit; }
+
+
+
+.ruText{margin-top:8px; line-height:1.5; font-size:14px; opacity:.92}

@@ -1,14 +1,14 @@
 
-// tajweed service worker (safe update) — v25
-const CACHE = "tajweed-v23";
+// tajweed service worker (safe update) — v26
+const CACHE = "tajweed-v26";
 const CORE = [
   "./",
-  "./index.html?v=23",
-  "./styles.css?v=23",
-  "./data.js?v=23",
-  "./tests.js?v=23",
-  "./app.js?v=23",
-  "./manifest.json?v=23"
+  "./index.html?v=25",
+  "./styles.css?v=25",
+  "./data.js?v=25",
+  "./tests.js?v=25",
+  "./app.js?v=25",
+  "./manifest.json?v=26"
 ];
 
 self.addEventListener("install", (event) => {
@@ -41,7 +41,7 @@ self.addEventListener("fetch", (event) => {
         return fresh;
       } catch (e) {
         const cached = await caches.match("./");
-        return cached || caches.match("./index.html?v=23");
+        return cached || caches.match("./index.html?v=25");
       }
     })());
     return;

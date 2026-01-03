@@ -3,17 +3,10 @@
   const $ = (sel, el=document) => el.querySelector(sel);
   const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
 
-  const escapeHtml = (s) => (s==null?"":String(s))
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;")
-    .replace(/\\'/g,"&#39;");
-
   const STORAGE = {
-    settings: "tajweed_settings_v25",
-    progress: "tajweed_progress_v25",
-    notesPrefix: "tajweed_note_v25_"
+    settings: "tajweed_settings_v26",
+    progress: "tajweed_progress_v26",
+    notesPrefix: "tajweed_note_v26_"
   };
 
   const DEFAULT_SETTINGS = {
@@ -44,8 +37,20 @@
   };
 
   function loadSettings(){
-    try { return { ...DEFAULT_SETTINGS, ...(JSON.parse(localStorage.getItem(STORAGE.settings))||{}) }; }
-    catch { return { ...DEFAULT_SETTINGS }; }
+    // миграция настроек со старых версий (чтобы ничего не "пропало")
+    const candidates = [STORAGE.settings, "tajweed_settings_v25", "tajweed_settings_v24", "tajweed_settings_v23"];
+    for(const k of candidates){
+      const raw = localStorage.getItem(k);
+      if(raw){
+        try{
+          const obj = JSON.parse(raw);
+          // если нашли старый ключ — сохраним в новый
+          if(k !== STORAGE.settings) localStorage.setItem(STORAGE.settings, raw);
+          return { ...DEFAULT_SETTINGS, ...(obj||{}) };
+        }catch(e){ /* ignore */ }
+      }
+    }
+    return { ...DEFAULT_SETTINGS };
   }
   function saveSettings(s){
     localStorage.setItem(STORAGE.settings, JSON.stringify(s));
@@ -90,8 +95,18 @@
   }
 
   function loadProgress(){
-    try { return JSON.parse(localStorage.getItem(STORAGE.progress)) || { completed: {} }; }
-    catch { return { completed: {} }; }
+    const candidates = [STORAGE.progress, "tajweed_progress_v25", "tajweed_progress_v24", "tajweed_progress_v23"];
+    for(const k of candidates){
+      const raw = localStorage.getItem(k);
+      if(raw){
+        try{
+          const obj = JSON.parse(raw) || { completed: {} };
+          if(k !== STORAGE.progress) localStorage.setItem(STORAGE.progress, JSON.stringify(obj));
+          return obj;
+        }catch(e){ /* ignore */ }
+      }
+    }
+    return { completed: {} };
   }
   function saveProgress(p){
     localStorage.setItem(STORAGE.progress, JSON.stringify(p));
@@ -112,21 +127,8 @@
   // UI state
   let settings = loadSettings();
   let progress = loadProgress();
-  let current = { blockId: null, lessonId: null, mode: "lesson" }; // lesson | quiz | trainer | settings | exam | prayer | adhkar | quran | notes
+  let current = { blockId: null, lessonId: null, mode: "lesson" }; // lesson | quiz | trainer | settings | exam | prayer | adhkar
   let filter = { q: "", activePill: "all" };
-
-  // Quran (Juz 30) state
-  let quran = {
-    juz: 30,
-    loaded: false,
-    loading: false,
-    error: "",
-    ruEdition: "",
-    showRu: true,
-    query: "",
-    mergedAyahs: [],
-    selected: null // {word, ayahKey, info}
-  };
 
   const pills = [
     {id:"all", label:"Все"},
@@ -136,8 +138,10 @@
     {id:"exam", label:"Экзамены"},
     {id:"prayer", label:"Намаз"},
     {id:"adhkar", label:"Азкары"},
-    {id:"quran", label:"Коран (30-й джуз)"},
+    {id:"quran", label:"Коран (30 джузов)"},
     {id:"notes", label:"Заметки"},
+    {id:"progress", label:"Прогресс"},
+    {id:"review", label:"Повторение"},
     {id:"settings", label:"Настройки"}
   ];
 
@@ -167,10 +171,6 @@
     // #trainer
     // #settings
     // #exam/<blockId|final>
-    // #prayer
-    // #adhkar
-    // #quran/30
-    // #notes
     if(parts[0] === "quiz"){
       return { mode:"quiz", blockId: parts[1] || "b2", lessonId:null };
     }
@@ -178,16 +178,10 @@
       return { mode:"trainer", blockId:null, lessonId:null };
     }
     if(parts[0] === "prayer"){
-      return { mode:"prayer", blockId:null, lessonId:null };
+      return { mode:"prayer" };
     }
     if(parts[0] === "adhkar"){
-      return { mode:"adhkar", blockId:null, lessonId:null };
-    }
-    if(parts[0] === "quran"){
-      return { mode:"quran", blockId:null, lessonId:null, juz: Number(parts[1]||30)||30 };
-    }
-    if(parts[0] === "notes"){
-      return { mode:"notes", blockId:null, lessonId:null };
+      return { mode:"adhkar" };
     }
     if(parts[0] === "settings"){
       return { mode:"settings", blockId:null, lessonId:null };
@@ -1139,27 +1133,53 @@
     }
   }
 
-  // --------- ADHKAR ----------
+  
+// --------- ADHKAR ----------
+  // Базовый офлайн‑набор + возможность расширять под свой источник.
+  // (Для полного "Хиснуль‑Муслим" удобнее подключить внешний набор/файл — добавим позже.)
   const ADHKAR = window.TAJWEED_ADHKAR || [
     {
       id:"morning",
-      title:"Утренние азкары (шаблон)",
+      title:"Утренние азкары (база)",
       items:[
-        { ar:"سُبْحَانَ اللهِ", ru:"СубханАллах", note:"Добавь полный набор из своего источника" },
-        { ar:"الْحَمْدُ لِلّٰهِ", ru:"Альхамдулиллях", note:"" },
-        { ar:"اللهُ أَكْبَرُ", ru:"Аллаху Акбар", note:"" }
+        { ar:"أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ", ru:"Прошу защиты у Аллаха от сатаны, побиваемого камнями.", note:"" },
+        { ar:"سُبْحَانَ اللهِ", ru:"СубханАллах (Пречист Аллах).", note:"" },
+        { ar:"الْحَمْدُ لِلّٰهِ", ru:"Альхамдулиллях (Хвала Аллаху).", note:"" },
+        { ar:"اللهُ أَكْبَرُ", ru:"Аллаху Акбар (Аллах Велик).", note:"" },
+        { ar:"لَا إِلٰهَ إِلَّا اللّٰهُ", ru:"Нет божества, кроме Аллаха.", note:"" },
+        { ar:"أَسْتَغْفِرُ اللّٰهَ", ru:"Прошу у Аллаха прощения.", note:"" }
+      ]
+    },
+    {
+      id:"evening",
+      title:"Вечерние азкары (база)",
+      items:[
+        { ar:"سُبْحَانَ اللهِ", ru:"СубханАллах.", note:"" },
+        { ar:"الْحَمْدُ لِلّٰهِ", ru:"Альхамдулиллях.", note:"" },
+        { ar:"اللهُ أَكْبَرُ", ru:"Аллаху Акбар.", note:"" },
+        { ar:"أَسْتَغْفِرُ اللّٰهَ", ru:"Истигфар.", note:"" }
       ]
     },
     {
       id:"after_salah",
       title:"После намаза (тасбих)",
       items:[
-        { ar:"سُبْحَانَ اللهِ (33)", ru:"33 раза", note:"" },
-        { ar:"الْحَمْدُ لِلّٰهِ (33)", ru:"33 раза", note:"" },
-        { ar:"اللهُ أَكْبَرُ (34)", ru:"34 раза", note:"" }
+        { ar:"سُبْحَانَ اللهِ ×33", ru:"33 раза", note:"" },
+        { ar:"الْحَمْدُ لِلّٰهِ ×33", ru:"33 раза", note:"" },
+        { ar:"اللهُ أَكْبَرُ ×34", ru:"34 раза", note:"" }
+      ]
+    },
+    {
+      id:"general",
+      title:"Зикры на каждый день (база)",
+      items:[
+        { ar:"سُبْحَانَ اللهِ وَبِحَمْدِهِ", ru:"СубханАллахи ва бихамдихи.", note:"" },
+        { ar:"سُبْحَانَ اللهِ الْعَظِيمِ", ru:"СубханАллахиль‑Азым.", note:"" },
+        { ar:"لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ", ru:"Нет мощи и силы ни у кого, кроме Аллаха.", note:"" }
       ]
     }
   ];
+
 
   function renderAdhkar(){
     const panel = $("#mainPanel");
@@ -1209,7 +1229,7 @@
               <div class="ar big" dir="rtl">${it.ar}</div>
               <div class="small">${it.ru || ""}</div>
               ${it.note ? `<div class="hint">${it.note}</div>` : ``}
-              <textarea class="note" data-note="adhkar_${cat.id}_${idx}" placeholder="Твоя заметка..."></textarea>
+              <textarea class="note" data-note="${cat.id}_${idx}" placeholder="Твоя заметка..."></textarea>
             </div>
           `).join("")}
         </div>
@@ -1225,7 +1245,7 @@
 
       // notes (reuse same storage scheme)
       $$(".note", view).forEach(ta=>{
-        const k = "tajweed_note_v25_" + ta.dataset.note;
+        const k = "tajweed_adhkar_note:" + ta.dataset.note;
         ta.value = localStorage.getItem(k) || "";
         ta.addEventListener("input", ()=> localStorage.setItem(k, ta.value));
       });
@@ -1243,8 +1263,10 @@
     else if(current.mode === "prayer") renderPrayer();
     else if(current.mode === "adhkar") renderAdhkar();
     else if(current.mode === "quran") renderQuran();
-    else if(current.mode === "notes") renderNotesHub();
-    }
+    else if(current.mode === "notes") renderNotes();
+    else if(current.mode === "progress") renderProgressView();
+    else if(current.mode === "review") renderReview();
+  }
 
   function attachSidebarHandlers(){
     $("#searchInput").addEventListener("input", (e)=>{
@@ -1264,18 +1286,10 @@
         setHash(["quiz", current.blockId || "b2"]);
       } else if(id === "trainer"){
         setHash(["trainer"]);
-      } else if(id === "exam"){
-        setHash(["exam","final"]);
-      } else if(id === "prayer"){
-        setHash(["prayer"]);
-      } else if(id === "adhkar"){
-        setHash(["adhkar"]);
-      } else if(id === "quran"){
-        setHash(["quran","30"]);
-      } else if(id === "notes"){
-        setHash(["notes"]);
       } else if(id === "settings"){
         setHash(["settings"]);
+      } else if(id === "exam"){
+        setHash(["exam","final"]);
       } else {
         // all -> show current
         if(current.mode==="lesson") setHash(["lesson", current.lessonId || firstLesson()]);
@@ -1296,334 +1310,6 @@
     filter.activePill = map[current.mode] || "all";
   }
 
-  
-  // -----------------------------
-  // Quran (Juz 30) — Arabic + RU, word click tajweed hints, notes
-  // -----------------------------
-  const QURAN_CACHE_KEY = "tajweed_quran_juz30_cache_v1";
-
-  function safeJsonParse(s, fallback){
-    try { return JSON.parse(s); } catch { return fallback; }
-  }
-
-  async function fetchJson(url){
-    const res = await fetch(url, { cache: "no-store" });
-    if(!res.ok) throw new Error("HTTP " + res.status);
-    return res.json();
-  }
-
-  async function resolveRuEdition(){
-    // Try to find Kuliev; fallback to first RU translation
-    const data = await fetchJson("https://api.alquran.cloud/v1/edition?format=text&language=ru&type=translation");
-    const list = data?.data || [];
-    const pick = list.find(e => (e.englishName||"").toLowerCase().includes("kuliev") || (e.name||"").toLowerCase().includes("кулиев"));
-    return (pick?.identifier) || (list[0]?.identifier) || "";
-  }
-
-  function ayahKeyFrom(a){
-    return `${a.surah.number}:${a.numberInSurah}`;
-  }
-
-  function mergeArabicRu(arAyahs, ruAyahs){
-    const ruMap = new Map();
-    (ruAyahs||[]).forEach(a => ruMap.set(ayahKeyFrom(a), a.text));
-    return (arAyahs||[]).map(a => ({
-      key: ayahKeyFrom(a),
-      surahNo: a.surah.number,
-      surahName: a.surah.englishName || a.surah.name,
-      ayahNo: a.numberInSurah,
-      arabic: a.text,
-      ru: ruMap.get(ayahKeyFrom(a)) || ""
-    }));
-  }
-
-  function tokenizeArabicWords(text){
-    // Keep diacritics; split on spaces; trim punctuation wrappers
-    return (text||"").split(/\s+/).filter(Boolean).map(w => w.trim());
-  }
-
-  const HAMZA = /[ءأؤئإ]/;
-  const SUKUN = /\u0652/; // ْ
-  const SHADDA = /\u0651/; // ّ
-
-  function analyzeMadd(word, nextWord){
-    const hints = [];
-    const w = word || "";
-    const next = nextWord || "";
-
-    // very rough madd-letter detection using diacritics (Uthmani has them)
-    const hasMaddLetter = /\u064E\u0627|\u064F\u0648|\u0650\u064A/.test(w); // َا or ُو or ِي
-    const hasHamzaInside = HAMZA.test(w);
-    const hasSukunAfterMadd = hasMaddLetter && (SUKUN.test(w) || SHADDA.test(w));
-    const endsWithMadd = /\u0627$|\u0648$|\u064A$/.test(w.replace(/[\u064B-\u0652\u0670]/g,'')); // strip harakat-ish then check
-    const nextStartsHamza = HAMZA.test(next.replace(/^\u0640+/,'').trim()[0] || "");
-
-    if(hasMaddLetter && hasHamzaInside){
-      hints.push({rule:"Мадд муттасыль (متصل)", why:"Буква мадда и хамза в одном слове."});
-    } else if(endsWithMadd && nextStartsHamza){
-      hints.push({rule:"Мадд мунфасыль (منفصل)", why:"Слово заканчивается маддом, следующее начинается с хамзы."});
-    }
-
-    if(hasSukunAfterMadd){
-      hints.push({rule:"Мадд по причине сукуна (سبب السكون)", why:"После мадда встречается сукун/шадда (упрощённая проверка)."});
-    }
-
-    // Badal-ish (starts with hamza + madd)
-    if(/^([أإؤئ]|آ)/.test(w) && hasMaddLetter){
-      hints.push({rule:"Мадд бадаль (بدل)", why:"Хамза + мадд (упрощённая проверка)."});
-    }
-
-    if(hints.length === 0 && hasMaddLetter){
-      hints.push({rule:"Мадд табии (طبيعي)", why:"Есть буква мадда без явной причины хамзы/сукуна рядом (упрощённо)."});
-    }
-
-    return hints;
-  }
-
-  function analyzeWord(word, ctx){
-    const nextWord = ctx?.nextWord || "";
-    const hints = [];
-
-    // Madd hints
-    analyzeMadd(word, nextWord).forEach(h => hints.push(h));
-
-    // Basic nunnation / tanween hint
-    if(/[\u064B\u064C\u064D]/.test(word)){
-      hints.push({rule:"Танвин / نون ساكنة", why:"В слове есть танвин (ً ٌ ٍ) — дальше смотри правило по следующей букве."});
-    }
-    if(/\u0646\u0652/.test(word)){
-      hints.push({rule:"Нун с сукуном (نون ساكنة)", why:"В слове есть نْ — дальше смотри правило по следующей букве."});
-    }
-    if(/\u0645\u0652/.test(word)){
-      hints.push({rule:"Мим с сукуном (ميم ساكنة)", why:"В слове есть مْ — дальше смотри правило по следующей букве."});
-    }
-
-    // Qalqala hint (letters ق ط ب ج د)
-    if(/[قطبجد]/.test(word) && (SUKUN.test(word) || SHADDA.test(word))){
-      hints.push({rule:"Калькаля (قلقلة)", why:"Есть حرف قلقلة с сукуном/шаддой (упрощённо)."});
-    }
-
-    return hints;
-  }
-
-  async function loadQuranJuz30(){
-    quran.loading = true; quran.error = ""; renderMain();
-    try{
-      // try cache
-      const cached = safeJsonParse(localStorage.getItem(QURAN_CACHE_KEY) || "null", null);
-      if(cached?.mergedAyahs?.length){
-        quran.loaded = true;
-        quran.ruEdition = cached.ruEdition || "";
-        quran.mergedAyahs = cached.mergedAyahs;
-        quran.loading = false;
-        renderMain();
-        return;
-      }
-
-      const ruId = await resolveRuEdition();
-      quran.ruEdition = ruId;
-
-      const [ar, ru] = await Promise.all([
-        fetchJson(`https://api.alquran.cloud/v1/juz/30/quran-uthmani`),
-        ruId ? fetchJson(`https://api.alquran.cloud/v1/juz/30/${ruId}`) : Promise.resolve({data:{ayahs:[]}})
-      ]);
-
-      const merged = mergeArabicRu(ar?.data?.ayahs||[], ru?.data?.ayahs||[]);
-      quran.mergedAyahs = merged;
-      quran.loaded = true;
-      localStorage.setItem(QURAN_CACHE_KEY, JSON.stringify({ ruEdition: ruId, mergedAyahs: merged }));
-    }catch(err){
-      quran.error = "Не получилось загрузить Коран. Проверь интернет/доступ к API. (" + (err?.message||err) + ")";
-    }finally{
-      quran.loading = false;
-      renderMain();
-    }
-  }
-
-  function renderQuran(){
-    const panel = $("#mainPanel");
-    const header = `
-      <div class="card">
-        <div class="cardTitle">Коран • 30-й джуз</div>
-        <div class="row" style="gap:10px; flex-wrap:wrap; align-items:center;">
-          <button class="btn" id="qLoad">${quran.loaded ? "Обновить" : "Загрузить"}</button>
-          <label class="toggle"><input type="checkbox" id="qShowRu" ${quran.showRu?'checked':''}/> <span>Показывать перевод (RU)</span></label>
-          <input class="input" id="qSearch" placeholder="Поиск по арабскому/переводу..." value="${escapeHtml(quran.query||"")}" style="min-width:240px;"/>
-          <button class="btn ghost" id="qClearCache">Сброс кеша</button>
-        </div>
-        ${quran.ruEdition ? `<div class="muted" style="margin-top:8px;">Перевод: <b>${escapeHtml(quran.ruEdition)}</b></div>` : ""}
-        ${quran.error ? `<div class="err" style="margin-top:10px;">${escapeHtml(quran.error)}</div>` : ""}
-      </div>
-    `;
-
-    const selected = quran.selected ? `
-      <div class="card">
-        <div class="cardTitle">Подсказка по слову</div>
-        <div class="arabic" style="font-size:${settings.arabicSize}px; direction:rtl; text-align:right;">${escapeHtml(quran.selected.word)}</div>
-        <div class="muted" style="margin-top:6px;">Аят: <b>${escapeHtml(quran.selected.ayahKey)}</b></div>
-        <div style="margin-top:10px;">
-          ${(quran.selected.info||[]).map(h=>`
-            <div class="pill active" style="display:inline-block; margin:0 8px 8px 0;">${escapeHtml(h.rule)}</div>
-            <div class="muted" style="margin:-4px 0 10px 0;">${escapeHtml(h.why)}</div>
-          `).join("") || '<div class="muted">Пока без подсказок — добавим точнее по мере наполнения правил.</div>'}
-        </div>
-        <div class="row" style="gap:10px; align-items:flex-start;">
-          <div style="flex:1;">
-            <div class="muted" style="margin-bottom:6px;">Заметка к этому аяту/слову</div>
-            <textarea class="textarea" id="qNote" placeholder="Пиши сюда свои пометки...">${escapeHtml(getNote("quran:"+quran.selected.ayahKey))}</textarea>
-            <div class="row" style="gap:10px; margin-top:8px;">
-              <button class="btn" id="qSaveNote">Сохранить</button>
-              <button class="btn ghost" id="qCloseHint">Закрыть</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    ` : "";
-
-    let body = "";
-    if(quran.loading){
-      body = `<div class="card"><div class="muted">Загрузка…</div></div>`;
-    } else if(quran.loaded){
-      const q = (quran.query||"").trim().toLowerCase();
-      const items = q ? quran.mergedAyahs.filter(a =>
-        (a.arabic||"").toLowerCase().includes(q) || (a.ru||"").toLowerCase().includes(q) || (a.key||"").includes(q)
-      ) : quran.mergedAyahs;
-
-      // group by surah
-      const bySurah = {};
-      items.forEach(a => {
-        bySurah[a.surahNo] = bySurah[a.surahNo] || { name: a.surahName, ayahs: [] };
-        bySurah[a.surahNo].ayahs.push(a);
-      });
-
-      body = Object.keys(bySurah).sort((a,b)=>Number(a)-Number(b)).map(sn=>{
-        const group = bySurah[sn];
-        return `
-          <div class="card">
-            <div class="cardTitle">Сура ${escapeHtml(sn)} • ${escapeHtml(group.name||"")}</div>
-            ${group.ayahs.map(a=>{
-              const words = tokenizeArabicWords(a.arabic);
-              const wordSpans = words.map((w,i)=>{
-                const next = words[i+1] || "";
-                // store next word for context
-                return `<span class="qword" data-word="${escapeHtml(w)}" data-next="${escapeHtml(next)}" data-ayah="${escapeHtml(a.key)}">${escapeHtml(w)}</span>`;
-              }).join(" ");
-
-              return `
-                <div class="ayah">
-                  <div class="ayahRow">
-                    <div class="arabic" style="font-size:${settings.arabicSize}px; direction:rtl; text-align:right;">
-                      ${wordSpans}
-                      <span class="ayahNo">﴿${escapeHtml(String(a.ayahNo))}﴾</span>
-                    </div>
-                    ${quran.showRu ? `<div class="ru" style="margin-top:8px;">${escapeHtml(a.ru||"")}</div>` : ""}
-                    <div class="muted" style="margin-top:8px;">Заметка: ${escapeHtml(getNote("quran:"+a.key)).slice(0,120)}${getNote("quran:"+a.key).length>120?'…':''}</div>
-                  </div>
-                </div>
-              `;
-            }).join("")}
-          </div>
-        `;
-      }).join("");
-    } else {
-      body = `<div class="card"><div class="muted">Нажми “Загрузить”, и мы подтянем 30-й джуз (арабский + RU перевод).</div></div>`;
-    }
-
-    panel.innerHTML = header + selected + body;
-
-    // handlers
-    $("#qLoad")?.addEventListener("click", ()=> loadQuranJuz30());
-    $("#qShowRu")?.addEventListener("change", (e)=>{ quran.showRu = !!e.target.checked; renderMain(); });
-    $("#qSearch")?.addEventListener("input", (e)=>{ quran.query = e.target.value; renderMain(); });
-    $("#qClearCache")?.addEventListener("click", ()=>{
-      localStorage.removeItem(QURAN_CACHE_KEY);
-      quran.loaded=false; quran.mergedAyahs=[]; quran.selected=null; quran.error="";
-      renderMain();
-    });
-    $("#qCloseHint")?.addEventListener("click", ()=>{ quran.selected=null; renderMain(); });
-    $("#qSaveNote")?.addEventListener("click", ()=>{
-      const t = $("#qNote")?.value || "";
-      if(quran.selected?.ayahKey) setNote("quran:"+quran.selected.ayahKey, t);
-      renderMain();
-    });
-
-    panel.querySelectorAll(".qword").forEach(el=>{
-      el.addEventListener("click", ()=>{
-        const word = el.getAttribute("data-word") || "";
-        const next = el.getAttribute("data-next") || "";
-        const ayahKey = el.getAttribute("data-ayah") || "";
-        const info = analyzeWord(word, { nextWord: next });
-        quran.selected = { word, ayahKey, info };
-        renderMain();
-      });
-    });
-  }
-
-  // -----------------------------
-  // Notes hub — unified search
-  // -----------------------------
-  function listAllNotes(){
-    const out = [];
-    for(let i=0;i<localStorage.length;i++){
-      const k = localStorage.key(i);
-      if(!k) continue;
-      if(!k.startsWith(STORAGE.notesPrefix)) continue;
-      const id = k.slice(STORAGE.notesPrefix.length);
-      const txt = localStorage.getItem(k) || "";
-      if(!txt.trim()) continue;
-      out.push({ id, txt });
-    }
-    return out;
-  }
-
-  function renderNotesHub(){
-    const panel = $("#mainPanel");
-    const q = (filter.q||"").trim().toLowerCase();
-    const type = (filter.activePill === "notes") ? "all" : "all";
-
-    const notes = listAllNotes().filter(n => {
-      if(!q) return true;
-      return (n.id||"").toLowerCase().includes(q) || (n.txt||"").toLowerCase().includes(q);
-    }).sort((a,b)=> a.id.localeCompare(b.id, "ru"));
-
-    panel.innerHTML = `
-      <div class="card">
-        <div class="cardTitle">Заметки</div>
-        <div class="muted">Все заметки из Таджвида, Корана и Азкаров — в одном месте. Поиск — сверху слева.</div>
-      </div>
-      ${notes.length ? notes.map(n=>`
-        <div class="card">
-          <div class="row" style="justify-content:space-between; gap:10px; align-items:center;">
-            <div>
-              <div class="cardTitle" style="margin-bottom:6px;">${escapeHtml(n.id)}</div>
-              <div class="muted">${escapeHtml(n.txt).replace(/\n/g,"<br/>")}</div>
-            </div>
-            <div class="row" style="gap:10px;">
-              <button class="btn ghost" data-open-note="${escapeHtml(n.id)}">Открыть</button>
-            </div>
-          </div>
-        </div>
-      `).join("") : `<div class="card"><div class="muted">Пока нет заметок. Добавь их внутри уроков/корана/азкаров — и они появятся тут.</div></div>`}
-    `;
-
-    panel.querySelectorAll("[data-open-note]").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const id = btn.getAttribute("data-open-note");
-        if(!id) return;
-        if(id.startsWith("quran:")){
-          const ayahKey = id.replace(/^quran:/,"");
-          quran.selected = { word:"", ayahKey, info:[] };
-          quran.showRu = true;
-          setHash(["quran","30"]);
-        } else {
-          // lesson id
-          setHash(["lesson", id]);
-        }
-      });
-    });
-  }
-
-
   function onRoute(){
     current = parseHash();
     // set blockId for lesson
@@ -1636,7 +1322,691 @@
     renderMain();
   }
 
-  function init(){
+  
+  
+  // --------- QURAN (30 JUZ) ----------
+  // Мы загружаем данные по джузам по сети (Arabic Uthmani + RU перевод),
+  // кешируем по джузу, и никогда не "роняем" UI, если сети нет.
+  const QURAN_CACHE_KEY = "tajweed_quran_cache_v2"; // { juz: { arabic:[], ru:[], meta:{...} } }
+  const QURAN_WORD_NOTE_PREFIX = "tajweed_quran_word_note_v2:"; // key: juz|ayahGlobal|wordIdx
+  const QURAN_AYAH_NOTE_PREFIX = "tajweed_quran_ayah_note_v2:"; // key: juz|ayahGlobal
+  const QURAN_READ_PREFIX      = "tajweed_quran_read_v2:";      // key: juz|ayahGlobal -> "1"
+
+  // Translation id (alquran.cloud). Можно поменять позже в настройках
+  const QURAN_TRANSLATION_ID = "ru.kuliev";
+
+  function safeJSONParse(str, fallback){
+    try { return JSON.parse(str); } catch(e){ return fallback; }
+  }
+
+  function getQuranCache(){
+    return safeJSONParse(localStorage.getItem(QURAN_CACHE_KEY), { juz: {} });
+  }
+  function setQuranCache(cache){
+    localStorage.setItem(QURAN_CACHE_KEY, JSON.stringify(cache));
+  }
+
+  // Arabic normalization (удаляем знаки паузы/декор, оставляем огласовки)
+  function stripQuranPunct(s){
+    return (s||"")
+      .replace(/[ۖۗۘۙۚۛۜ۝۞۩]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function stripDiacritics(s){
+    // убираем огласовки для определения "первой буквы"
+    return (s||"").replace(/[\u064B-\u0652\u0670]/g, "");
+  }
+
+  function firstArabicLetter(word){
+    const w = stripDiacritics(stripQuranPunct(word));
+    const m = w.match(/[\u0621-\u064A]/);
+    return m ? m[0] : "";
+  }
+
+  function isHamzaLetter(ch){
+    return ["ء","أ","إ","ؤ","ئ"].includes(ch);
+  }
+  function isIdghamLetter(ch){
+    return ["ي","ن","م","و","ل","ر"].includes(ch);
+  }
+  function isIdghamGhunnahLetter(ch){
+    return ["ي","ن","م","و"].includes(ch);
+  }
+  function isIzharHalqiLetter(ch){
+    return ["ء","ه","ع","ح","غ","خ"].includes(ch);
+  }
+  function isIkhfaLetter(ch){
+    return ["ت","ث","ج","د","ذ","ز","س","ش","ص","ض","ط","ظ","ف","ق","ك"].includes(ch);
+  }
+
+  function analyzeTajweedForWord(word, nextWord, opts){
+    // opts: {isEndOfAyah:boolean}
+    const res = [];
+    const w = stripQuranPunct(word);
+    const nwFirst = firstArabicLetter(nextWord||"");
+
+    // --- Madd detection (best-effort) ---
+    // Natural madd patterns: َ + ا , ُ + و , ِ + ي
+    const hasNatural = /َا|ُو|ِي/.test(w);
+    // Muttasil: madd + hamza in same word (after madd)
+    const muttasil = /(َا|ُو|ِي).*([ءأإؤئ])/.test(w);
+    const endsWithMadd = /[اوي]$/.test(stripDiacritics(w));
+    const munfasil = endsWithMadd && isHamzaLetter(nwFirst);
+
+    // Madd lin: َ + (وْ|يْ) at the end, and we stop
+    const maddLin = opts?.isEndOfAyah && /َ[وي]ْ$/.test(w);
+
+    if(muttasil){
+      res.push({type:"madd", title:"مَدّ مُتَّصِل (muttasil)", body:"В одном слове: буква мадд + хамза после неё. Обычно тянем 4–5 харакатов."});
+    } else if(munfasil){
+      res.push({type:"madd", title:"مَدّ مُنْفَصِل (munfasil)", body:"Буква мадд в конце слова, хамза в начале следующего. Обычно тянем 4–5 харакатов."});
+    } else if(maddLin){
+      res.push({type:"madd", title:"مَدّ لِين (lin)", body:"При остановке: (فَتْحَة + وْ/يْ). Тянем 2/4/6 харакатов (по риваяту и школе чтения)."});
+    } else if(hasNatural){
+      // arid li sukun if end of ayah and ends with madd
+            if(opts?.isEndOfAyah && endsWithMadd){
+        res.push({type:"madd", title:"مَدّ عَارِض لِلسُّكُون (ʿāriḍ)", body:"При остановке появляется временный сукун после буквы мадд. Тянем 2/4/6 харакатов."});
+      } else {
+        res.push({type:"madd", title:"مَدّ طَبِيعِي (ṭabīʿī)", body:"Обычный мадд без причины хамзы/сукуна. Тянем 2 хараката."});
+      }
+    }
+
+    // --- Qalqalah ---
+    if(/[قطبجد]\u0652|[قطبجد]ْ/.test(w)){ // sukun
+      res.push({type:"rule", title:"قَلْقَلَة (qalqalah)", body:"Если буква ق ط ب ج د с сукуном — делаем лёгкий отскок звука (без добавления огласовки)."});
+    }
+
+    // --- Noon sakinah / tanween rules (look at next letter) ---
+    const hasNoonSakinah = /نْ/.test(w);
+    const hasTanween = /[ًٌٍ]/.test(w);
+    if(hasNoonSakinah || hasTanween){
+      if(isIzharHalqiLetter(nwFirst)){
+        res.push({type:"rule", title:"إِظْهَار (izhar)", body:"После نْ/танвина идёт буква горла: ء هـ ع ح غ خ — читаем ن ясно, без слияния."});
+      } else if(nwFirst === "ب"){
+        res.push({type:"rule", title:"إِقْلَاب (iqlab)", body:"После نْ/танвина идёт ب — ن превращается в م с гунной."});
+      } else if(isIdghamLetter(nwFirst)){
+        if(isIdghamGhunnahLetter(nwFirst)){
+          res.push({type:"rule", title:"إِدْغَام بِغُنَّة (idgham with ghunnah)", body:"После نْ/танвина идёт ي ن م و — слияние с гунной."});
+        } else {
+          res.push({type:"rule", title:"إِدْغَام بِلا غُنَّة (idgham without ghunnah)", body:"После نْ/танвина идёт ل или ر — слияние без гунны."});
+        }
+      } else if(isIkhfaLetter(nwFirst)){
+        res.push({type:"rule", title:"إِخْفَاء (ikhfa)", body:"После نْ/танвина идёт одна из 15 букв ихфа — нун читается скрыто с гунной."});
+      }
+    }
+
+    // --- Mim sakinah rules ---
+    const hasMimSakinah = /مْ/.test(w);
+    if(hasMimSakinah){
+      if(nwFirst === "م"){
+        res.push({type:"rule", title:"إِدْغَام شَفَوِي (idgham shafawi)", body:"После مْ идёт م — слияние двух мимов с гунной (мّ)."});
+      } else if(nwFirst === "ب"){
+        res.push({type:"rule", title:"إِخْفَاء شَفَوِي (ikhfa shafawi)", body:"После مْ идёт ب — скрытое произношение мима с гунной, губы не смыкаются полностью."});
+      } else {
+        res.push({type:"rule", title:"إِظْهَار شَفَوِي (izhar shafawi)", body:"После مْ идёт любая буква кроме م и ب — мим произносится ясно, без гунны."});
+      }
+    }
+
+    // --- Lam in Allah (simple hint) ---
+    if(stripDiacritics(w).includes("الله")){
+      // Determine previous vowel is hard without context; show reminder
+      res.push({type:"hint", title:"لَفْظُ الْجَلَالَة (اللّٰه)", body:"Лям в слове «Аллах» читается твёрдо после َ или ُ и мягко после ِ."});
+    }
+
+    if(res.length === 0){
+      res.push({type:"hint", title:"Подсказка", body:"Здесь не распознано явных правил автоматически. Если нужно — добавь свою заметку к слову/аяту."});
+    }
+    return res;
+  }
+
+  async function fetchJuz(juzNum){
+    // Arabic text
+    const urlAr = `https://api.alquran.cloud/v1/juz/${juzNum}/quran-uthmani`;
+    const urlRu = `https://api.alquran.cloud/v1/juz/${juzNum}/${QURAN_TRANSLATION_ID}`;
+    const [arResp, ruResp] = await Promise.all([fetch(urlAr), fetch(urlRu)]);
+    if(!arResp.ok) throw new Error("Не удалось загрузить арабский текст");
+    if(!ruResp.ok) throw new Error("Не удалось загрузить перевод");
+    const arJson = await arResp.json();
+    const ruJson = await ruResp.json();
+    const arAyahs = arJson?.data?.ayahs || [];
+    const ruAyahs = ruJson?.data?.ayahs || [];
+    // align by index
+    const list = arAyahs.map((a, i)=>({
+      number: a.number, // global
+      numberInSurah: a.numberInSurah,
+      surah: { number: a.surah.number, name: a.surah.name, englishName: a.surah.englishName },
+      text: a.text,
+      ru: (ruAyahs[i]?.text) || ""
+    }));
+    return { ayahs: list, meta: { juz: juzNum, fetchedAt: Date.now() } };
+  }
+
+  function quranNoteKeyJuzAyah(juzNum, ayahGlobal){
+    return `${juzNum}|${ayahGlobal}`;
+  }
+
+  function renderQuran(){
+    const panel = $("#mainPanel");
+    panel.innerHTML = `
+      <div class="card content">
+        <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+          <div>
+            <h3 style="margin:0;">Коран — 30 джузов</h3>
+            <div class="muted" style="margin-top:4px;">Выбери джуз → загрузить → нажми на слово, чтобы увидеть подсказки таджвида (в т.ч. мадды) + заметки.</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <label class="muted">Джуз:</label>
+            <select id="qJuzSelect" class="select"></select>
+            <button class="btn" id="qLoadBtn">Загрузить</button>
+            <button class="btn ghost" id="qClearBtn">Очистить кэш</button>
+          </div>
+        </div>
+
+        <div id="qStatus" class="muted" style="margin-top:10px;"></div>
+
+        <div id="qList" style="margin-top:14px;"></div>
+
+        <div id="qWordPanel" class="card" style="display:none; margin-top:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+            <div>
+              <div class="arabic big" id="qWordText"></div>
+              <div class="muted" id="qWordMeta"></div>
+            </div>
+            <button class="btn ghost" id="qWordClose">Закрыть</button>
+          </div>
+          <div class="divider"></div>
+          <div id="qHints"></div>
+          <div class="divider"></div>
+          <div class="grid2">
+            <div>
+              <div class="muted">Заметка к этому слову</div>
+              <textarea id="qWordNote" class="textarea" rows="3" placeholder="Например: здесь мадд мунфасиль, тянем 4–5..."></textarea>
+              <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                <button class="btn" id="qSaveWordNote">Сохранить</button>
+                <button class="btn ghost" id="qClearWordNote">Очистить</button>
+              </div>
+            </div>
+            <div>
+              <div class="muted">Заметка к аяту</div>
+              <textarea id="qAyahNote" class="textarea" rows="3" placeholder="Например: повторить чтение, обратить внимание на калькалю..."></textarea>
+              <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                <button class="btn" id="qSaveAyahNote">Сохранить</button>
+                <button class="btn ghost" id="qClearAyahNote">Очистить</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const sel = $("#qJuzSelect");
+    sel.innerHTML = Array.from({length:30}, (_,i)=>`<option value="${i+1}">${i+1}</option>`).join("");
+    const last = safeJSONParse(localStorage.getItem("tajweed_last_juz"), 30);
+    sel.value = String(last);
+
+    const status = (msg)=>{ $("#qStatus").textContent = msg || ""; };
+
+    const cache = getQuranCache();
+    const renderFromCache = (juzNum)=>{
+      const juzData = cache.juz[String(juzNum)];
+      if(!juzData?.ayahs?.length){
+        $("#qList").innerHTML = `<div class="muted">Нет данных для этого джуза. Нажми “Загрузить”.</div>`;
+        return;
+      }
+      status(`Показан джуз ${juzNum}. Данные: ${new Date(juzData.meta.fetchedAt).toLocaleString()}`);
+
+      // Render ayahs grouped by surah
+      const listEl = $("#qList");
+      let html = "";
+      let lastSurah = null;
+
+      juzData.ayahs.forEach((a, idx)=>{
+        const surahKey = `${a.surah.number}`;
+        if(surahKey !== lastSurah){
+          lastSurah = surahKey;
+          html += `<div class="divider"></div>
+                   <h4 style="margin:14px 0 8px;">${a.surah.name} <span class="muted">(${a.surah.englishName})</span></h4>`;
+        }
+
+        const ayahKey = quranNoteKeyJuzAyah(juzNum, a.number);
+        const isRead = localStorage.getItem(QURAN_READ_PREFIX + ayahKey) === "1";
+
+        const arabicWords = stripQuranPunct(a.text).split(" ").filter(Boolean);
+        // clickable words
+        const wordsHtml = arabicWords.map((w, wi)=>{
+          const safeW = w.replace(/"/g,"&quot;");
+          return `<span class="qWord" data-juz="${juzNum}" data-ayah="${a.number}" data-idx="${wi}" data-next="${(arabicWords[wi+1]||"").replace(/"/g,"&quot;")}" data-text="${safeW}">${safeW}</span>`;
+        }).join(" ");
+
+        html += `
+          <div class="ayahRow">
+            <div class="ayahTop">
+              <label class="chk">
+                <input type="checkbox" class="qRead" data-juz="${juzNum}" data-ayah="${a.number}" ${isRead?"checked":""}/>
+                <span class="muted">Прочитано</span>
+              </label>
+              <div class="muted">Аят: ${a.surah.number}:${a.numberInSurah}</div>
+            </div>
+            <div class="arabic ayahText">${wordsHtml}</div>
+            <div class="ruText">${a.ru || ""}</div>
+            <div class="muted small" style="margin-top:6px;">
+              <button class="btn ghost qAyahNoteBtn" data-juz="${juzNum}" data-ayah="${a.number}">Заметка к аяту</button>
+            </div>
+          </div>
+        `;
+      });
+
+      listEl.innerHTML = html;
+
+      // bind read checkboxes
+      $$(".qRead", listEl).forEach(cb=>{
+        cb.addEventListener("change", ()=>{
+          const juz = cb.getAttribute("data-juz");
+          const ayah = cb.getAttribute("data-ayah");
+          const key = quranNoteKeyJuzAyah(juz, ayah);
+          if(cb.checked) localStorage.setItem(QURAN_READ_PREFIX + key, "1");
+          else localStorage.removeItem(QURAN_READ_PREFIX + key);
+          // progress ping
+          bumpStreak("quran_read");
+        });
+      });
+
+      // word click
+      $$(".qWord", listEl).forEach(span=>{
+        span.addEventListener("click", ()=>{
+          const juzNum = Number(span.getAttribute("data-juz"));
+          const ayahGlobal = Number(span.getAttribute("data-ayah"));
+          const wordIdx = Number(span.getAttribute("data-idx"));
+          const wordText = span.getAttribute("data-text") || "";
+          const nextWord = span.getAttribute("data-next") || "";
+
+          openQuranWordPanel(juzNum, ayahGlobal, wordIdx, wordText, nextWord, juzData);
+        });
+      });
+
+      // ayah note button
+      $$(".qAyahNoteBtn", listEl).forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const juzNum = Number(btn.getAttribute("data-juz"));
+          const ayahGlobal = Number(btn.getAttribute("data-ayah"));
+          openQuranWordPanel(juzNum, ayahGlobal, 0, "", "", juzData, {openAyahNoteOnly:true});
+        });
+      });
+    };
+
+    const loadJuz = async ()=>{
+      const juzNum = Number(sel.value);
+      localStorage.setItem("tajweed_last_juz", JSON.stringify(juzNum));
+      status(`Загружаю джуз ${juzNum}...`);
+      $("#qList").innerHTML = `<div class="muted">Загрузка…</div>`;
+      try{
+        const data = await fetchJuz(juzNum);
+        cache.juz[String(juzNum)] = data;
+        setQuranCache(cache);
+        renderFromCache(juzNum);
+        toast("Загружено");
+      }catch(e){
+        status(`Не удалось загрузить. Показываю локальный кэш, если он есть. (${e.message})`);
+        renderFromCache(juzNum);
+      }
+    };
+
+    $("#qLoadBtn").onclick = loadJuz;
+    $("#qClearBtn").onclick = ()=>{
+      localStorage.removeItem(QURAN_CACHE_KEY);
+      status("Кэш очищен.");
+      $("#qList").innerHTML = `<div class="muted">Кэш очищен. Нажми “Загрузить”.</div>`;
+      toast("Очищено");
+    };
+
+    // initial show from cache (no network)
+    renderFromCache(Number(sel.value));
+    status("Выбери джуз и нажми “Загрузить”, если данных ещё нет.");
+  }
+
+  function openQuranWordPanel(juzNum, ayahGlobal, wordIdx, wordText, nextWord, juzData, flags){
+    const panel = $("#qWordPanel");
+    panel.style.display = "block";
+    $("#qWordClose").onclick = ()=>{ panel.style.display = "none"; };
+
+    // find ayah
+    const ayah = (juzData.ayahs||[]).find(a=>Number(a.number)===Number(ayahGlobal));
+    const ayahKey = quranNoteKeyJuzAyah(juzNum, ayahGlobal);
+
+    const ayahNote = localStorage.getItem(QURAN_AYAH_NOTE_PREFIX + ayahKey) || "";
+    const wordKey = `${ayahKey}|${wordIdx}`;
+    const wordNote = localStorage.getItem(QURAN_WORD_NOTE_PREFIX + wordKey) || "";
+
+    $("#qAyahNote").value = ayahNote;
+    $("#qWordNote").value = wordNote;
+
+    const meta = ayah ? `${ayah.surah.name} — ${ayah.surah.number}:${ayah.numberInSurah} • Джуз ${juzNum}` : `Джуз ${juzNum}`;
+    $("#qWordMeta").textContent = meta;
+
+    // If opened from ayah note button
+    const openAyahOnly = flags?.openAyahNoteOnly;
+    if(openAyahOnly){
+      $("#qWordText").textContent = "Заметка к аяту";
+      $("#qHints").innerHTML = `<div class="muted">Можно записать, что важно в чтении/смысле этого аята.</div>`;
+      // disable word note
+      $("#qWordNote").value = "";
+      $("#qSaveWordNote").disabled = true;
+      $("#qClearWordNote").disabled = true;
+    } else {
+      $("#qWordText").textContent = wordText || "";
+      $("#qSaveWordNote").disabled = false;
+      $("#qClearWordNote").disabled = false;
+
+      // determine end of ayah
+      let isEnd = false;
+      if(ayah){
+        const words = stripQuranPunct(ayah.text).split(" ").filter(Boolean);
+        isEnd = (wordIdx === words.length - 1);
+      }
+
+      const hints = analyzeTajweedForWord(wordText||"", nextWord||"", {isEndOfAyah:isEnd});
+      $("#qHints").innerHTML = hints.map(h=>`
+        <div class="hintCard">
+          <div class="hintTitle">${h.title}</div>
+          <div class="muted">${h.body}</div>
+        </div>
+      `).join("");
+    }
+
+    $("#qSaveWordNote").onclick = ()=>{
+      const key = QURAN_WORD_NOTE_PREFIX + `${ayahKey}|${wordIdx}`;
+      localStorage.setItem(key, ($("#qWordNote").value||"").trim());
+      toast("Сохранено");
+    };
+    $("#qClearWordNote").onclick = ()=>{
+      localStorage.removeItem(QURAN_WORD_NOTE_PREFIX + `${ayahKey}|${wordIdx}`);
+      $("#qWordNote").value = "";
+      toast("Очищено");
+    };
+    $("#qSaveAyahNote").onclick = ()=>{
+      localStorage.setItem(QURAN_AYAH_NOTE_PREFIX + ayahKey, ($("#qAyahNote").value||"").trim());
+      toast("Сохранено");
+    };
+    $("#qClearAyahNote").onclick = ()=>{
+      localStorage.removeItem(QURAN_AYAH_NOTE_PREFIX + ayahKey);
+      $("#qAyahNote").value = "";
+      toast("Очищено");
+    };
+  }
+
+
+  function renderNotes(){
+    const panel = $("#mainPanel");
+    panel.innerHTML = `
+      <div class="card content">
+        <h3 style="margin-top:0;">Заметки</h3>
+        <div class="muted">Поиск по заметкам: таджвид / коран / азкары.</div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+          <input id="notesSearch" class="input" placeholder="Поиск..." style="flex:1; min-width:220px;" />
+          <select id="notesFilter" class="select">
+            <option value="all">Все</option>
+            <option value="таджвид">Таджвид</option>
+            <option value="коран">Коран</option>
+            <option value="азкары">Азкары</option>
+          </select>
+          <button class="btn ghost" id="notesRefresh">Обновить</button>
+        </div>
+
+        <div id="notesList" style="margin-top:14px;"></div>
+      </div>
+    `;
+
+    const list = $("#notesList");
+    const input = $("#notesSearch");
+    const filterSel = $("#notesFilter");
+
+    const render = ()=>{
+      const q = (input.value||"").trim().toLowerCase();
+      const f = filterSel.value;
+      const items = collectAllNotes().filter(n=>{
+        if(f!=="all" && n.type!==f) return false;
+        if(!q) return true;
+        return (n.title||"").toLowerCase().includes(q) || (n.text||"").toLowerCase().includes(q);
+      });
+
+      if(!items.length){
+        list.innerHTML = `<div class="muted">Пока нет заметок (или ничего не найдено).</div>`;
+        return;
+      }
+
+      list.innerHTML = items
+        .sort((a,b)=> a.type.localeCompare(b.type) || a.title.localeCompare(b.title))
+        .map(n=>`
+          <div class="noteCard">
+            <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
+              <div>
+                <div class="noteTitle">${escapeHtml(n.title)}</div>
+                <div class="pillSmall">${n.type}</div>
+              </div>
+              <button class="btn ghost" data-del="${encodeURIComponent(n.type+"|"+n.ref)}">Удалить</button>
+            </div>
+            <div class="noteText">${escapeHtml(n.text)}</div>
+          </div>
+        `).join("");
+    };
+
+    list.addEventListener("click",(e)=>{
+      const b = e.target.closest("[data-del]");
+      if(!b) return;
+      const raw = decodeURIComponent(b.getAttribute("data-del"));
+      const [type, ref] = raw.split("|");
+      if(type==="коран" && ref.includes(":") && !ref.includes("|")){
+        localStorage.removeItem(QURAN_AYAH_NOTE_PREFIX + ref);
+      }else if(type==="коран" && ref.includes("|")){
+        localStorage.removeItem(QURAN_WORD_NOTE_PREFIX + ref);
+      }else if(type==="таджвид"){
+        localStorage.removeItem("tajweed_note:" + ref);
+      }else if(type==="азкары"){
+        localStorage.removeItem("tajweed_adhkar_note:" + ref);
+      }
+      toast("Удалено");
+      render();
+    });
+
+    input.addEventListener("input", render);
+    filterSel.addEventListener("change", render);
+    $("#notesRefresh").addEventListener("click", render);
+    render();
+  }
+
+  // --------- PROGRESS ----------
+  function renderProgressView(){
+    const panel = $("#mainPanel");
+    const completed = progress?.completed || {};
+    const totalLessons = blocks.reduce((acc,b)=> acc + (b.lessons?.length||0), 0);
+    const done = Object.keys(completed).length;
+
+    // Quran progress (simple): count ayah notes marked as read
+    let qDone = 0;
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i)||"";
+      if(k.startsWith("tajweed_quran_read:")) qDone++;
+    }
+
+    panel.innerHTML = `
+      <div class="card content">
+        <h3 style="margin-top:0;">Прогресс</h3>
+
+        <div class="grid2">
+          <div class="miniStat">
+            <div class="muted">Таджвид: пройдено уроков</div>
+            <div class="bigNum">${done} / ${totalLessons}</div>
+          </div>
+          <div class="miniStat">
+            <div class="muted">Коран (30 джуз): отмечено “прочитано”</div>
+            <div class="bigNum">${qDone}</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <h4 style="margin:0 0 8px 0;">Серия дней</h4>
+        <div class="muted" style="margin-bottom:10px;">Отмечай “занималась сегодня” — и приложение будет считать серию.</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <button class="btn" id="streakToday">Занималась сегодня</button>
+          <div class="pillSmall" id="streakInfo"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <h4 style="margin:0 0 8px 0;">Результаты тестов</h4>
+        <div class="muted">Сохраняются автоматически после прохождения мини‑тестов/экзаменов.</div>
+        <div id="testStats" style="margin-top:10px;"></div>
+      </div>
+    `;
+
+    // streak
+    const SKEY="tajweed_streak_v1";
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth()+1).padStart(2,"0");
+    const dd = String(today.getDate()).padStart(2,"0");
+    const todayKey = `${yyyy}-${mm}-${dd}`;
+
+    function loadStreak(){
+      try{ return JSON.parse(localStorage.getItem(SKEY)||"{}"); }catch(e){ return {}; }
+    }
+    function saveStreak(obj){ localStorage.setItem(SKEY, JSON.stringify(obj)); }
+
+    function daysBetween(a,b){
+      const da = new Date(a+"T00:00:00");
+      const db = new Date(b+"T00:00:00");
+      return Math.round((db-da)/(24*3600*1000));
+    }
+
+    function computeStreak(){
+      const s=loadStreak();
+      const last = s.last || null;
+      let count = s.count || 0;
+      if(!last) return {count:0,last:null};
+      const diff = daysBetween(last, todayKey);
+      if(diff===0) return {count, last};
+      if(diff===1) return {count, last};
+      // missed day -> streak broken
+      return {count:0,last:null};
+    }
+
+    function renderStreak(){
+      const s=loadStreak();
+      const info=$("#streakInfo");
+      const computed=computeStreak();
+      const last = s.last || "—";
+      info.textContent = `Серия: ${computed.count} • Последний день: ${last}`;
+    }
+
+    $("#streakToday").addEventListener("click", ()=>{
+      const s=loadStreak();
+      const computed=computeStreak();
+      let count = computed.count;
+      const last = s.last || null;
+      const diff = last ? daysBetween(last, todayKey) : 999;
+      if(!last) count = 1;
+      else if(diff===0) count = count; // already counted
+      else if(diff===1) count = count + 1;
+      else count = 1;
+      saveStreak({count, last: todayKey});
+      toast("Отмечено");
+      renderStreak();
+    });
+    renderStreak();
+
+    // test stats (best-effort)
+    const statsEl=$("#testStats");
+    const tkeys=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i)||"";
+      if(k.startsWith("tajweed_test_result:")) tkeys.push(k);
+    }
+    if(!tkeys.length){
+      statsEl.innerHTML = `<div class="muted">Пока нет результатов.</div>`;
+    }else{
+      const rows=tkeys.slice(0,50).map(k=>{
+        const v=localStorage.getItem(k)||"";
+        return `<tr><td>${escapeHtml(k.replace("tajweed_test_result:",""))}</td><td>${escapeHtml(v)}</td></tr>`;
+      }).join("");
+      statsEl.innerHTML = `<table class="table"><thead><tr><th>Тест</th><th>Результат</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+  }
+
+  // --------- REVIEW ----------
+  function renderReview(){
+    const panel = $("#mainPanel");
+    const completed = progress?.completed || {};
+    const allLessons = [];
+    for(const b of blocks){
+      for(const l of (b.lessons||[])){
+        allLessons.push({blockId:b.id, blockTitle:b.title, lessonId:l.id, lessonTitle:l.title});
+      }
+    }
+    const need = allLessons.filter(x=> !completed[x.lessonId]);
+    // pick up to 5
+    const pick = need.slice(0,5);
+
+    panel.innerHTML = `
+      <div class="card content">
+        <h3 style="margin-top:0;">Повторение</h3>
+        <div class="muted">Быстрый план: 5 тем, которые ещё не закрыты (или можно повторить вручную).</div>
+
+        <div class="divider"></div>
+
+        <div id="reviewList"></div>
+
+        <div class="divider"></div>
+
+        <button class="btn" id="reviewShuffle">Сформировать заново</button>
+      </div>
+    `;
+
+    const list=$("#reviewList");
+    function draw(){
+      const completed = progress?.completed || {};
+      const remaining = allLessons.filter(x=> !completed[x.lessonId]);
+      const shuffled = remaining.sort(()=> Math.random()-0.5).slice(0,5);
+      if(!shuffled.length){
+        list.innerHTML = `<div class="muted">Кажется, все уроки отмечены как пройденные 🎉</div>`;
+        return;
+      }
+      list.innerHTML = shuffled.map(x=>`
+        <div class="reviewCard">
+          <div class="muted">${escapeHtml(x.blockTitle)}</div>
+          <div class="reviewTitle">${escapeHtml(x.lessonTitle)}</div>
+          <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+            <button class="btn" data-open="${x.lessonId}">Открыть тему</button>
+            <button class="btn ghost" data-done="${x.lessonId}">Отметить пройдено</button>
+          </div>
+        </div>
+      `).join("");
+    }
+    list.addEventListener("click",(e)=>{
+      const open=e.target.closest("[data-open]");
+      if(open){
+        const id=open.getAttribute("data-open");
+        setHash(["lesson", id]);
+        return;
+      }
+      const done=e.target.closest("[data-done]");
+      if(done){
+        const id=done.getAttribute("data-done");
+        progress.completed[id]=true;
+        saveProgress(progress);
+        toast("Отмечено");
+        draw();
+        return;
+      }
+    });
+    $("#reviewShuffle").addEventListener("click", draw);
+    draw();
+  }
+
+function init(){
     applySettings(settings);
 
     // Build basic layout
