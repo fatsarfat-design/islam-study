@@ -1,4 +1,23 @@
 
+// --- Error boundary (no-crash) ---
+window.addEventListener("error", (e) => {
+  try { console.error(e.error || e.message || e); } catch {}
+  try {
+    const root = document.getElementById("app");
+    if (root && !document.getElementById("fatalErrorCard")) {
+      const div = document.createElement("div");
+      div.id = "fatalErrorCard";
+      div.style.cssText = "margin:16px; padding:16px; border:1px solid rgba(255,255,255,.15); border-radius:16px; background:rgba(0,0,0,.25)";
+      div.innerHTML = `<div style="font-weight:700; margin-bottom:6px;">Что-то пошло не так</div>
+      <div style="opacity:.85; margin-bottom:10px;">Я не даю приложению “упасть”. Обнови страницу (Ctrl+R). Если не помогло — очисть кэш приложения.</div>
+      <button id="btnReload" style="padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;cursor:pointer;">Обновить</button>`;
+      root.prepend(div);
+      const b = document.getElementById("btnReload"); if (b) b.onclick = () => location.reload();
+    }
+  } catch {}
+});
+
+
 (() => {
   const $ = (sel, el=document) => el.querySelector(sel);
   const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
@@ -287,13 +306,13 @@
         </div>
       </div>
     `;
-    $("#btnLesson").onclick = () => { filter.activePill="lesson"; setHash(["lesson", current.lessonId || firstLesson()]); };
-    $("#btnQuiz").onclick = () => { filter.activePill="quiz"; setHash(["quiz", current.blockId || "b2"]); };
-    $("#btnTrainer").onclick = () => { filter.activePill="trainer"; setHash(["trainer"]); };
-    $("#btnExam").onclick = () => { filter.activePill="exam"; setHash(["exam","final"]); };
-    $("#btnPrayer").onclick = () => { filter.activePill="prayer"; setHash(["prayer"]); };
-    $("#btnAdhkar").onclick = () => { filter.activePill="adhkar"; setHash(["adhkar"]); };
-    $("#btnSettings").onclick = () => { filter.activePill="settings"; setHash(["settings"]); };
+    { const __el = $("#btnLesson"); if(__el) __el.onclick = () => { filter.activePill="lesson"; setHash(["lesson", current.lessonId || firstLesson()]); }; }
+    { const __el = $("#btnQuiz"); if(__el) __el.onclick = () => { filter.activePill="quiz"; setHash(["quiz", current.blockId || "b2"]); }; }
+    { const __el = $("#btnTrainer"); if(__el) __el.onclick = () => { filter.activePill="trainer"; setHash(["trainer"]); }; }
+    { const __el = $("#btnExam"); if(__el) __el.onclick = () => { filter.activePill="exam"; setHash(["exam","final"]); }; }
+    { const __el = $("#btnPrayer"); if(__el) __el.onclick = () => { filter.activePill="prayer"; setHash(["prayer"]); }; }
+    { const __el = $("#btnAdhkar"); if(__el) __el.onclick = () => { filter.activePill="adhkar"; setHash(["adhkar"]); }; }
+    { const __el = $("#btnSettings"); if(__el) __el.onclick = () => { filter.activePill="settings"; setHash(["settings"]); }; }
   }
 
   function renderLesson(){
@@ -360,8 +379,8 @@
       renderLesson();
     };
 
-    $("#goMiniQuiz").onclick = () => setHash(["quiz", block.id]);
-    $("#goExam").onclick = () => setHash(["exam", block.id]);
+    { const __el = $("#goMiniQuiz"); if(__el) __el.onclick = () => setHash(["quiz", block.id]); }
+    { const __el = $("#goExam"); if(__el) __el.onclick = () => setHash(["exam", block.id]); }
   }
 
   function renderQuiz(){
@@ -423,7 +442,7 @@
       $("#quizResult").textContent = `Результат: ${score}/${qs.length} (${pct}%).`;
     };
 
-    $("#retryQuiz").onclick = () => setHash(["quiz", blockId]);
+    { const __el = $("#retryQuiz"); if(__el) __el.onclick = () => setHash(["quiz", blockId]); }
     $("#toLessonFromQuiz").onclick = () => {
       const lessonId = block.lessons[0]?.id || firstLesson();
       setHash(["lesson", lessonId]);
@@ -495,7 +514,7 @@
         <div class="small">Источник: ${item.bid.toUpperCase()}</div>
       `;
       $("#taskResult").textContent = "";
-      $("#nextTask").onclick = showOne;
+      { const __el = $("#nextTask"); if(__el) __el.onclick = showOne; }
 
       // handle check on click: pick option -> evaluate instantly
       $$("#taskBox input[name='tr']").forEach(inp=>{
@@ -510,7 +529,7 @@
       });
     }
 
-    $("#nextTask").onclick = showOne;
+    { const __el = $("#nextTask"); if(__el) __el.onclick = showOne; }
     showOne();
   }
 
@@ -604,11 +623,11 @@
     };
     updateLabels();
 
-    $("#setTheme").onchange = (e)=>{ settings.theme = e.target.value; saveSettings(settings); applySettings(settings); };
-    $("#setFs").oninput = (e)=>{ settings.fontSize = Number(e.target.value); saveSettings(settings); applySettings(settings); updateLabels(); };
-    $("#setArFs").oninput = (e)=>{ settings.arabicSize = Number(e.target.value); saveSettings(settings); applySettings(settings); updateLabels(); };
-    $("#setArFont").onchange = (e)=>{ settings.arabicFont = e.target.value; saveSettings(settings); applySettings(settings); };
-    $("#setBg").onchange = (e)=>{ settings.background = e.target.value; saveSettings(settings); applySettings(settings); syncBgPhotoUI(); };
+    { const __el = $("#setTheme"); if(__el) __el.onchange = (e)=>{ settings.theme = e.target.value; saveSettings(settings); applySettings(settings); }; }
+    { const __el = $("#setFs"); if(__el) __el.oninput = (e)=>{ settings.fontSize = Number(e.target.value); saveSettings(settings); applySettings(settings); updateLabels(); }; }
+    { const __el = $("#setArFs"); if(__el) __el.oninput = (e)=>{ settings.arabicSize = Number(e.target.value); saveSettings(settings); applySettings(settings); updateLabels(); }; }
+    { const __el = $("#setArFont"); if(__el) __el.onchange = (e)=>{ settings.arabicFont = e.target.value; saveSettings(settings); applySettings(settings); }; }
+    { const __el = $("#setBg"); if(__el) __el.onchange = (e)=>{ settings.background = e.target.value; saveSettings(settings); applySettings(settings); syncBgPhotoUI(); }; }
 
     // Фото фона
     $("#bgPhotoFile").onchange = (e)=>{
@@ -736,7 +755,7 @@
       $("#examResult").textContent = `Итог: ${score}/${examQs.length} (${pct}%).`;
     };
 
-    $("#restartExam").onclick = () => setHash(["exam", which]);
+    { const __el = $("#restartExam"); if(__el) __el.onclick = () => setHash(["exam", which]); }
   }
 
 
@@ -1072,15 +1091,15 @@
       }
     };
 
-    $("#pRefresh").onclick = refresh;
+    { const __el = $("#pRefresh"); if(__el) __el.onclick = refresh; }
 
     $("#pLocMode").onchange = ()=>{
       syncLocUI();
       refresh();
     };
 
-    $("#pMethod").onchange = refresh;
-    $("#pSchool").onchange = refresh;
+    { const __el = $("#pMethod"); if(__el) __el.onchange = refresh; }
+    { const __el = $("#pSchool"); if(__el) __el.onchange = refresh; }
 
     $("#pNotify").onchange = async ()=>{
       settings.prayer = settings.prayer || {};
@@ -1238,9 +1257,9 @@
       // counter
       let val = 0;
       const sync = ()=> $("#cVal").textContent = String(val);
-      $("#cInc").onclick = ()=>{ val++; sync(); };
-      $("#cDec").onclick = ()=>{ val = Math.max(0, val-1); sync(); };
-      $("#cReset").onclick = ()=>{ val=0; sync(); };
+      { const __el = $("#cInc"); if(__el) __el.onclick = ()=>{ val++; sync(); }; }
+      { const __el = $("#cDec"); if(__el) __el.onclick = ()=>{ val = Math.max(0, val-1); sync(); }; }
+      { const __el = $("#cReset"); if(__el) __el.onclick = ()=>{ val=0; sync(); }; }
       sync();
 
       // notes (reuse same storage scheme)
@@ -1653,7 +1672,7 @@
       }
     };
 
-    $("#qLoadBtn").onclick = loadJuz;
+    { const __el = $("#qLoadBtn"); if(__el) __el.onclick = loadJuz; }
     $("#qClearBtn").onclick = ()=>{
       localStorage.removeItem(QURAN_CACHE_KEY);
       status("Кэш очищен.");
@@ -1669,7 +1688,7 @@
   function openQuranWordPanel(juzNum, ayahGlobal, wordIdx, wordText, nextWord, juzData, flags){
     const panel = $("#qWordPanel");
     panel.style.display = "block";
-    $("#qWordClose").onclick = ()=>{ panel.style.display = "none"; };
+    { const __el = $("#qWordClose"); if(__el) __el.onclick = ()=>{ panel.style.display = "none"; }; }
 
     // find ayah
     const ayah = (juzData.ayahs||[]).find(a=>Number(a.number)===Number(ayahGlobal));
