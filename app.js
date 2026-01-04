@@ -2166,3 +2166,76 @@ window.handleAzCount = function(groupId, idx) {
         }
     }
 };
+// --- БЛОК АЗКАРОВ (БЕЗОПАСНОЕ ДОБАВЛЕНИЕ) ---
+
+// 1. Функция отрисовки
+function drawAdhkar() {
+    const panel = document.getElementById("mainPanel");
+    if (!panel) return;
+    
+    panel.innerHTML = `
+        <div class="azkar-list">
+            <h1 style="margin:20px 10px;">Азкары и Зикры</h1>
+            <div id="azContent"></div>
+        </div>
+    `;
+    
+    const container = document.getElementById("azContent");
+    if (!window.TAJWEED_ADHKAR) return;
+
+    window.TAJWEED_ADHKAR.forEach(group => {
+        const gDiv = document.createElement("div");
+        gDiv.innerHTML = `<h2 style="margin:30px 10px 15px; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:8px;">${group.title}</h2>`;
+        
+        group.items.forEach((item, idx) => {
+            const id = `${group.id}-${idx}`;
+            const card = document.createElement("div");
+            card.className = "az-card";
+            card.id = `card-${id}`;
+            card.innerHTML = `
+                <div class="az-ar">${item.ar}</div>
+                <div class="az-ru">${item.ru}</div>
+                <div class="az-note">${item.note}</div>
+                <div class="az-counter">
+                    <span>Осталось: <b id="val-${id}">${item.repeat || 1}</b></span>
+                    <button class="az-btn" onclick="handleAzCount('${group.id}', ${idx})">Считать</button>
+                </div>
+            `;
+            gDiv.appendChild(card);
+        });
+        container.appendChild(gDiv);
+    });
+}
+
+// 2. Функция счета
+window.handleAzCount = function(groupId, idx) {
+    const id = `${groupId}-${idx}`;
+    const el = document.getElementById("val-" + id);
+    if (!el) return;
+    let count = parseInt(el.innerText);
+    if (count > 0) {
+        count--;
+        el.innerText = count;
+        if (count === 0) {
+            el.innerText = "Готово";
+            document.getElementById("card-" + id).classList.add("done");
+        }
+    }
+};
+
+// 3. Авто-добавление кнопки в меню при загрузке
+setTimeout(() => {
+    const pillRow = document.getElementById("pillRow");
+    if (pillRow) {
+        const azBtn = document.createElement("div");
+        azBtn.className = "pill";
+        azBtn.innerText = "Азкары";
+        azBtn.onclick = () => {
+            // Убираем активный класс у других и даем этой кнопке
+            document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
+            azBtn.classList.add("active");
+            drawAdhkar();
+        };
+        pillRow.appendChild(azBtn);
+    }
+}, 1000);
