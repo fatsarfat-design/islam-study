@@ -2122,3 +2122,47 @@ function init(){
 
   init();
 })();
+// Функция для отображения Азкаров
+function drawAdhkar() {
+    const panel = document.getElementById("mainPanel");
+    if(!panel) return;
+    panel.innerHTML = `<div class="azkar-list"><h1 style="margin:10px">Азкары</h1><div id="azContent"></div></div>`;
+    const container = document.getElementById("azContent");
+
+    window.TAJWEED_ADHKAR.forEach(group => {
+        const gDiv = document.createElement("div");
+        gDiv.innerHTML = `<h2 style="margin:20px 10px; color:var(--accent);">${group.title}</h2>`;
+        group.items.forEach((item, idx) => {
+            const id = `${group.id}-${idx}`;
+            const card = document.createElement("div");
+            card.className = "az-card";
+            card.id = `card-${id}`;
+            card.innerHTML = `
+                <div class="az-ar" style="font-family:var(--arfont); font-size:28px; text-align:right; direction:rtl; margin-bottom:10px;">${item.ar}</div>
+                <div class="az-ru" style="color:var(--accent2); font-weight:bold;">${item.ru}</div>
+                <div class="az-note" style="color:var(--muted); font-size:13px; font-style:italic; margin-bottom:10px;">${item.note}</div>
+                <div class="az-counter" style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:10px; border-radius:10px;">
+                    <span>Осталось: <b id="val-${id}">${item.repeat}</b></span>
+                    <button class="az-btn" onclick="handleAzCount('${group.id}', ${idx})" style="background:var(--accent); color:#000; border:none; padding:5px 15px; border-radius:5px; font-weight:bold;">Считать</button>
+                </div>
+            `;
+            gDiv.appendChild(card);
+        });
+        container.appendChild(gDiv);
+    });
+}
+
+// Функция счета
+window.handleAzCount = function(groupId, idx) {
+    const id = `${groupId}-${idx}`;
+    const el = document.getElementById("val-" + id);
+    let count = parseInt(el.innerText);
+    if (count > 0) {
+        count--;
+        el.innerText = count;
+        if (count === 0) {
+            el.innerText = "Готово";
+            document.getElementById("card-" + id).style.opacity = "0.5";
+        }
+    }
+};
