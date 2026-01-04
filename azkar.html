@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Азкары и Зикры</title>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2d5a27;
+            --bg-color: #f8faf8;
+            --accent-color: #e67e22;
+            --card-bg: #ffffff;
+            --text-main: #333;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            color: var(--text-main);
+        }
+
+        .header {
+            background: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Навигация (Табы) */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 25px;
+            position: sticky;
+            top: 10px;
+            z-index: 1000;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 30px;
+            background: white;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: 0.3s;
+            color: var(--primary-color);
+        }
+
+        .tab-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Карточки Азкаров */
+        .azkar-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            border-right: 6px solid var(--primary-color);
+            transition: 0.3s;
+        }
+
+        .card.completed {
+            opacity: 0.5;
+            transform: scale(0.98);
+            border-right-color: #ccc;
+        }
+
+        .arabic {
+            font-family: 'Amiri', serif;
+            font-size: 32px;
+            text-align: right;
+            direction: rtl;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: #000;
+        }
+
+        .transcription {
+            color: var(--accent-color);
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+            border-bottom: 1px dashed #eee;
+            padding-bottom: 10px;
+        }
+
+        .translation {
+            font-size: 0.95em;
+            line-height: 1.5;
+            color: #555;
+            font-style: italic;
+        }
+
+        /* Счетчик */
+        .counter-box {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f1f8f1;
+            padding: 10px 20px;
+            border-radius: 15px;
+        }
+
+        .count-num {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .count-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: 0.2s;
+        }
+
+        .count-btn:active {
+            transform: scale(0.9);
+        }
+
+        .count-btn:disabled {
+            background: #ccc;
+        }
+
+        @media (max-width: 600px) {
+            .arabic { font-size: 26px; }
+            .tab-btn { padding: 10px 15px; font-size: 0.9em; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Азкары и Зикры</h1>
+</div>
+
+<div class="container">
+    <div class="tabs">
+        <button class="tab-btn active" onclick="filterData('morning', this)">Утро</button>
+        <button class="tab-btn" onclick="filterData('evening', this)">Вечер</button>
+        <button class="tab-btn" onclick="filterData('daily', this)">Зикры</button>
+    </div>
+
+    <div id="azkar-list" class="azkar-grid">
+        </div>
+</div>
+
+<script>
+    const azkarData = [
+        // --- УТРЕННИЕ ---
+        {
+            id: 1, category: 'morning',
+            arabic: "أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ. اللَّهُ لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ...",
+            transcription: "А’узу би-Лляhи мина-ш-шайтани-р-раджим. Аллаhу ля иляhа илля hува-ль-Хаййу-ль-Каййум...",
+            translation: "Аят аль-Курси. Защита от джиннов до вечера.",
+            repeat: 1
+        },
+        {
+            id: 2, category: 'morning',
+            arabic: "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ ، خَلَقْتَنِي وَأَنَا عَبْدُكَ...",
+            transcription: "Аллаhумма Анта Рабби, ля иляhа илля Анта, халякътани ва ана ‘абдука...",
+            translation: "Сайидуль-Истигфар (Господин покаяний).",
+            repeat: 1
+        },
+        {
+            id: 3, category: 'morning',
+            arabic: "بِسْمِ اللهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ",
+            transcription: "Бисми-Лляhи-ллязи ля ядурру ма’а-смиhи шай-ун филь-арды ва ля фи-ссама-и...",
+            translation: "С именем Аллаха, с Которым ничто не повредит.",
+            repeat: 3
+        },
+        // --- ВЕЧЕРНИЕ ---
+        {
+            id: 4, category: 'evening',
+            arabic: "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ وَالْحَمْدُ لِلَّهِ",
+            transcription: "Амсайна ва амса-ль-мульку ли-Лляhи ва-ль-хамду ли-Лляh",
+            translation: "Мы дожили до вечера, и вся власть принадлежит Аллаху.",
+            repeat: 1
+        },
+        {
+            id: 5, category: 'evening',
+            arabic: "أَعُوذُ بِكَلِمَاتِ اللهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ",
+            transcription: "А’узу би-кялимати-Лляhи-т-таммати мин шарри ма халякъ",
+            translation: "Прибегаю к защите слов Аллаха от зла того, что Он сотворил.",
+            repeat: 3
+        },
+        // --- ЗИКРЫ ---
+        {
+            id: 6, category: 'daily',
+            arabic: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+            transcription: "Субхана-Ллаhи ва би-хамдиhи",
+            translation: "Пречист Аллах и хвала Ему. (100 раз прощаются грехи).",
+            repeat: 100
+        },
+        {
+            id: 7, category: 'daily',
+            arabic: "أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ",
+            transcription: "Астагфиру-Ллаhа ва атубу иляйh",
+            translation: "Прошу прощения у Аллаха и каюсь перед Ним.",
+            repeat: 100
+        }
+    ];
+
+    function render(category) {
+        const list = document.getElementById('azkar-list');
+        list.innerHTML = '';
+        const filtered = azkarData.filter(a => a.category === category);
+
+        filtered.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.id = `card-${item.id}`;
+            card.innerHTML = `
+                <div class="arabic">${item.arabic}</div>
+                <div class="transcription">🗣 ${item.transcription}</div>
+                <div class="translation">📖 ${item.translation}</div>
+                <div class="counter-box">
+                    <span class="count-num">Осталось: <span id="num-${item.id}">${item.repeat}</span></span>
+                    <button class="count-btn" onclick="decrement(${item.id})">Считать</button>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    function decrement(id) {
+        const numSpan = document.getElementById(`num-${id}`);
+        const card = document.getElementById(`card-${id}`);
+        let current = parseInt(numSpan.innerText);
+
+        if (current > 0) {
+            current--;
+            numSpan.innerText = current;
+            if (current === 0) {
+                numSpan.innerText = "Готово!";
+                card.classList.add('completed');
+                card.querySelector('button').disabled = true;
+            }
+        }
+    }
+
+    function filterData(cat, btn) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        render(cat);
+    }
+
+    // Инициализация
+    render('morning');
+</script>
+
+</body>
+</html>
