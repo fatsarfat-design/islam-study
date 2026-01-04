@@ -202,6 +202,18 @@ window.addEventListener("error", (e) => {
     if(parts[0] === "adhkar"){
       return { mode:"adhkar" };
     }
+    if(parts[0] === "quran"){
+      return { mode:"quran" };
+    }
+    if(parts[0] === "notes"){
+      return { mode:"notes" };
+    }
+    if(parts[0] === "progress"){
+      return { mode:"progress" };
+    }
+    if(parts[0] === "review"){
+      return { mode:"review" };
+    }
     if(parts[0] === "settings"){
       return { mode:"settings", blockId:null, lessonId:null };
     }
@@ -275,20 +287,32 @@ window.addEventListener("error", (e) => {
                   (current.mode==="exam") ? "Экзамены" :
                   (current.mode==="prayer") ? "Время намаза" :
                   (current.mode==="adhkar") ? "Азкары" :
+                  (current.mode==="quran") ? "Коран (30 джузов)" :
+                  (current.mode==="notes") ? "Заметки" :
+                  (current.mode==="progress") ? "Прогресс" :
+                  (current.mode==="review") ? "Повторение" :
                   "Настройки";
     const desc = (current.mode==="lesson")
-      ? "Открывай тему, делай заметки, проходи мини‑тест и экзамены. Всё сохраняется."
-      : (current.mode==="quiz")
-      ? "Короткие тесты по каждому блоку: быстрая проверка понимания."
-      : (current.mode==="trainer")
-      ? "Случайные задания: угадай правило/термин/категорию. Отлично для закрепления."
-      : (current.mode==="exam")
-      ? "Экзамены по блокам и итоговый экзамен по всему курсу."
-      : (current.mode==="prayer")
-      ? "Часы намаза по твоей локации/городу, выбор метода расчёта и напоминания."
-      : (current.mode==="adhkar")
-      ? "Азкары по категориям + быстрые повторы и счётчик."
-      : "Шрифт, размер, фон, тема — подстрой приложение под себя.";
+  ? "Открывай тему, делай заметки, проходи мини‑тест и экзамены. Всё сохраняется."
+  : (current.mode==="quiz")
+  ? "Короткие тесты по каждому блоку: быстрая проверка понимания."
+  : (current.mode==="trainer")
+  ? "Случайные задания: угадай правило/термин/категорию. Отлично для закрепления."
+  : (current.mode==="exam")
+  ? "Экзамены по блокам и итоговый экзамен по всему курсу."
+  : (current.mode==="prayer")
+  ? "Часы намаза по твоей локации/городу, выбор метода расчёта и напоминания."
+  : (current.mode==="adhkar")
+  ? "Азкары по категориям + быстрые повторы и счётчик."
+  : (current.mode==="quran")
+  ? "30-й джуз: арабский текст + перевод, клики по словам, подсказки и заметки."
+  : (current.mode==="notes")
+  ? "Единый раздел заметок: таджвид / Коран / азкары + поиск и фильтры."
+  : (current.mode==="progress")
+  ? "Прогресс обучения: завершённые темы, серия дней, результаты тестов."
+  : (current.mode==="review")
+  ? "Повторение: закрепляй темы и возвращайся к сложным моментам."
+  : "Шрифт, размер, фон, тема — подстрой приложение под себя.";
     hero.innerHTML = `
       <div class="hero card">
         <div class="topbar">
@@ -1294,27 +1318,57 @@ window.addEventListener("error", (e) => {
     });
 
     $("#pillRow").addEventListener("click", (e)=>{
-      const pill = e.target.closest("[data-pill]");
-      if(!pill) return;
-      const id = pill.getAttribute("data-pill");
-      filter.activePill = id;
+  const pill = e.target.closest("[data-pill]");
+  if(!pill) return;
 
-      if(id === "lesson"){
-        setHash(["lesson", current.lessonId || firstLesson()]);
-      } else if(id === "quiz"){
-        setHash(["quiz", current.blockId || "b2"]);
-      } else if(id === "trainer"){
-        setHash(["trainer"]);
-      } else if(id === "settings"){
-        setHash(["settings"]);
-      } else if(id === "exam"){
-        setHash(["exam","final"]);
-      } else {
-        // all -> show current
-        if(current.mode==="lesson") setHash(["lesson", current.lessonId || firstLesson()]);
-        else setHash([current.mode, current.blockId || "final"]);
-      }
-    });
+  const id = pill.getAttribute("data-pill");
+  filter.activePill = id;
+
+  // "all" just keeps current view (no jumping)
+  if(id === "all"){
+    // keep current hash; just re-render pill highlight
+    renderSidebar();
+    return;
+  }
+
+  switch(id){
+    case "lesson":
+      setHash(["lesson", current.lessonId || firstLesson()]);
+      break;
+    case "quiz":
+      setHash(["quiz", current.blockId || "b2"]);
+      break;
+    case "trainer":
+      setHash(["trainer"]);
+      break;
+    case "exam":
+      setHash(["exam", "final"]);
+      break;
+    case "prayer":
+      setHash(["prayer"]);
+      break;
+    case "adhkar":
+      setHash(["adhkar"]);
+      break;
+    case "quran":
+      setHash(["quran"]);
+      break;
+    case "notes":
+      setHash(["notes"]);
+      break;
+    case "progress":
+      setHash(["progress"]);
+      break;
+    case "review":
+      setHash(["review"]);
+      break;
+    case "settings":
+      setHash(["settings"]);
+      break;
+    default:
+      setHash(["lesson", current.lessonId || firstLesson()]);
+  }
+});
 
     $("#blocksWrap").addEventListener("click", (e)=>{
       const btn = e.target.closest("[data-lesson]");
@@ -1325,7 +1379,7 @@ window.addEventListener("error", (e) => {
   }
 
   function syncModeToPill(){
-    const map = { lesson:"lesson", quiz:"quiz", trainer:"trainer", settings:"settings", exam:"exam", prayer:"prayer", adhkar:"adhkar" };
+    const map = { lesson:"lesson", quiz:"quiz", trainer:"trainer", exam:"exam", prayer:"prayer", adhkar:"adhkar", quran:"quran", notes:"notes", progress:"progress", review:"review", settings:"settings" };
     filter.activePill = map[current.mode] || "all";
   }
 
